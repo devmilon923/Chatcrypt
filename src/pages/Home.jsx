@@ -1,86 +1,199 @@
 import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import io from "socket.io-client";
-const socket = io("http://localhost:4000");
-export default function Home() {
-  const [connection, setConnection] = useState({
-    status: true,
-    message: "Connect Room",
-  });
-  const [message, setMessage] = useState();
-  const roomRef = useRef(null);
-  const messageRef = useRef(null);
-  const nameRef = useRef(null);
 
-  const handleMessage = async (e) => {
-    e.preventDefault();
-    if (!nameRef.current.value) return alert("Need Your Name");
-    if (!roomRef.current.value) return alert("Need Room Name");
-    socket.emit("messageEvent", {
-      name: nameRef.current.value,
-      message: messageRef.current.value,
+const socket = io("http://localhost:4000");
+
+export default function Home() {
+  const [chatInfo, setChatInfo] = useState([]);
+  const [activeUser, setActiveUser] = useState([]);
+  const [serverResponse, setServerResponse] = useState();
+  const roomRef = useRef(null);
+  const nameRef = useRef(null);
+  const fileRef = useRef(null);
+  const messageRef = useRef(null);
+
+  const joinRoom = () => {
+    socket.emit("joinRoom", {
       room: roomRef.current.value,
+      name: nameRef.current.value,
     });
-    messageRef.current.value = null;
   };
+
+  const sendMessage = (e) => {
+    e.preventDefault();
+    socket.emit("chatEvent", {
+      name: nameRef.current.value,
+      room: roomRef.current.value,
+      message: messageRef.current.value,
+      time: new Date(),
+    });
+  };
+
+  const handleFileUpload = (e) => {
+    e.preventDefault();
+    if (!roomRef.current.value || !nameRef.current.value) {
+      return alert("Room and name are required");
+    }
+
+    const file = fileRef.current.files[0];
+    const reader = new FileReader();
+
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      socket.emit("chatEvent", {
+        name: nameRef.current.value,
+        room: roomRef.current.value,
+        filename: file.name,
+        data: reader.result, // Base64 or ArrayBuffer
+      });
+    };
+
+    fileRef.current.value = null;
+  };
+
   useEffect(() => {
-    socket.on("sendResponseEvent", (payload) => {
-      setMessage(payload);
-      setConnection({ ...connection, message: "Join another room" });
+    socket.on("chatEvent", (data) => {
+      setChatInfo(data);
     });
   }, []);
-
-  const join = () => {
-    setConnection({ ...connection, message: "Connecting..." });
-    socket.emit("joinRoom", {
-      name: nameRef.current.value,
-      room: roomRef.current.value,
+  useEffect(() => {
+    socket.on("activeUserEvent", (data) => {
+      setActiveUser(data);
     });
-  };
+  }, []);
+  useEffect(() => {
+    socket.on("serverResponse", (data) => {
+      setServerResponse(data);
+      if (!serverResponse?.type) {
+        toast.error(serverResponse.message);
+      } else {
+        toast.error(serverResponse.message);
+      }
+    });
+  }, []);
   return (
-    <div>
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-        <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-          <input
-            type="text"
-            ref={nameRef}
-            className="w-full mb-4 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Type your name"
-          />
-          <input
-            type="text"
-            ref={roomRef}
-            className="w-full mb-4 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Type room name"
-          />
-          <div className="text-center">
-            <button
-              onClick={join}
-              className="btn btn-sm rounded-md bg-green-500 hover:bg-green-600 text-white mb-2"
-            >
-              {connection?.message}
-            </button>
-          </div>
-          <h1 className="text-2xl font-bold mb-4">Message Form</h1>
-          <form className="flex gap-2 items-center" onSubmit={handleMessage}>
+    <div className="flex flex-col md:flex-row gap-6 items-center justify-center min-h-screen bg-gray-100 p-6">
+      {/* Left Panel */}
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full sm:w-96">
+        <input
+          ref={nameRef}
+          placeholder="Your Name"
+          className="mb-4 p-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+        />
+        <input
+          ref={roomRef}
+          placeholder="Room Name"
+          className="mb-4 p-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          onClick={joinRoom}
+          className="bg-blue-500 text-white p-2 rounded mb-4 w-full hover:bg-blue-600 focus:outline-none"
+        >
+          Join Room
+        </button>
+
+        <form onSubmit={handleFileUpload} className="mb-4">
+          <input ref={fileRef} type="file" className="mb-2 w-full text-sm" />
+          <button
+            type="submit"
+            className="bg-green-500 text-white p-2 rounded w-full hover:bg-green-600 focus:outline-none"
+          >
+            Upload File
+          </button>
+        </form>
+
+        <div>
+          {chatInfo.length > 0
+            ? chatInfo.map(
+                (file, index) =>
+                  file.data && (
+                    <div
+                      key={index}
+                      className="mb-2 p-2 border rounded bg-gray-50"
+                    >
+                      <p>{file?.name} uploaded:</p>
+                      <a
+                        href={file?.data}
+                        download={file?.filename}
+                        className="text-blue-500 underline"
+                      >
+                        {file?.filename}
+                      </a>
+                    </div>
+                  )
+              )
+            : "No media shared"}
+        </div>
+      </div>
+
+      {/* Chat Panel */}
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full sm:w-96">
+        <div className="border-b pb-4 mb-4">
+          <h2 className="text-xl font-semibold">Chat</h2>
+        </div>
+        <div className="h-64 overflow-y-auto mb-4">
+          {chatInfo.length > 0 ? (
+            chatInfo.map((msg, index) => (
+              <div key={index} className="mb-2">
+                <div className="text-sm text-gray-500">
+                  {msg.name}{" "}
+                  <span className="text-xs text-gray-400">{msg.time}</span>
+                </div>
+                <div
+                  className={`${
+                    msg.name.toLowerCase() ===
+                    nameRef.current.value.toLowerCase()
+                      ? "bg-blue-100 ml-auto"
+                      : "bg-gray-100"
+                  } p-3 rounded-lg max-w-xs`}
+                >
+                  {msg.message}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p>No messages yet.</p>
+          )}
+        </div>
+        <form onSubmit={sendMessage}>
+          <div className="flex items-center">
             <input
-              type="text"
               ref={messageRef}
-              required
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Type your message..."
+              type="text"
+              placeholder="Type a message..."
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
-            <button className="btn btn-sm bg-yellow-500 hover:bg-yellow-600 text-white">
+            <button
+              type="submit"
+              className="ml-2 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none"
+            >
               Send
             </button>
-          </form>
-          <div className="mt-4 p-3 border rounded bg-gray-50">
-            {message
-              ? message.map((msg, index) => (
-                  <p key={index} className="text-gray-700">
-                    {msg.name}: {msg.message}
-                  </p>
-                ))
-              : "No Message"}
+          </div>
+        </form>
+      </div>
+
+      {/* Active Users Panel */}
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full sm:w-96">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold mb-2">
+            Online Users ({activeUser.length})
+          </h2>
+          <div className="space-y-2">
+            {activeUser.length > 0 ? (
+              activeUser.map((user, index) => (
+                <div
+                  key={index}
+                  className="flex items-center p-3 bg-blue-100 rounded-lg font-semibold"
+                >
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>{" "}
+                  {user?.name}
+                </div>
+              ))
+            ) : (
+              <p>No one is active.</p>
+            )}
           </div>
         </div>
       </div>
