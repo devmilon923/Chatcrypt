@@ -1,0 +1,1 @@
+This is an simple react project folder structure for my personal use!
