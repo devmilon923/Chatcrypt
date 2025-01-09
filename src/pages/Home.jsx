@@ -1,3 +1,4 @@
+import moment from "moment";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import io from "socket.io-client";
@@ -12,7 +13,7 @@ export default function Home() {
   const nameRef = useRef(null);
   const fileRef = useRef(null);
   const messageRef = useRef(null);
-
+  const chatContainerRef = useRef(null);
   const joinRoom = () => {
     socket.emit("joinRoom", {
       room: roomRef.current.value,
@@ -28,6 +29,7 @@ export default function Home() {
       message: messageRef.current.value,
       time: new Date(),
     });
+    e.target.reset();
   };
 
   const handleFileUpload = (e) => {
@@ -65,13 +67,26 @@ export default function Home() {
   useEffect(() => {
     socket.on("serverResponse", (data) => {
       setServerResponse(data);
-      if (!serverResponse?.type) {
-        toast.error(serverResponse.message);
+    });
+  }, [setServerResponse]);
+
+  useEffect(() => {
+    if (serverResponse) {
+      if (serverResponse.type) {
+        toast.success(serverResponse.message);
       } else {
+        console.log(serverResponse);
         toast.error(serverResponse.message);
       }
-    });
-  }, []);
+    }
+  }, [serverResponse]); // Dependency on serverResponse
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [chatInfo]);
+
   return (
     <div className="flex flex-col md:flex-row gap-6 items-center justify-center min-h-screen bg-gray-100 p-6">
       {/* Left Panel */}
@@ -132,13 +147,17 @@ export default function Home() {
         <div className="border-b pb-4 mb-4">
           <h2 className="text-xl font-semibold">Chat</h2>
         </div>
-        <div className="h-64 overflow-y-auto mb-4">
+        <div ref={chatContainerRef} className="h-64 overflow-y-auto mb-4">
           {chatInfo.length > 0 ? (
             chatInfo.map((msg, index) => (
-              <div key={index} className="mb-2">
-                <div className="text-sm text-gray-500">
+              <div key={index} className="mb-3">
+                <div className="text-sm text-gray-500 mb-1">
                   {msg.name}{" "}
-                  <span className="text-xs text-gray-400">{msg.time}</span>
+                  {msg.name.toLowerCase() ===
+                    nameRef.current.value.toLowerCase() && "(You)"}{" "}
+                  <span className="text-xs text-gray-400">
+                    {moment(msg.time).fromNow()}
+                  </span>
                 </div>
                 <div
                   className={`${
