@@ -7,6 +7,7 @@ const socket = io("http://localhost:4000");
 
 export default function Home() {
   const [chatInfo, setChatInfo] = useState([]);
+  const [status, setStatus] = useState(false);
   const [fileLink, setFileLink] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [activeUser, setActiveUser] = useState([]);
@@ -25,6 +26,9 @@ export default function Home() {
 
   const sendMessage = (e) => {
     e.preventDefault();
+    if (!roomRef.current.value || !nameRef.current.value) {
+      return toast.error("Disconnected! You need to join");
+    }
     socket.emit("chatEvent", {
       name: nameRef.current.value,
       room: roomRef.current.value,
@@ -37,13 +41,11 @@ export default function Home() {
   const handleFileUpload = (e) => {
     e.preventDefault();
     if (!roomRef.current.value || !nameRef.current.value) {
-      return toast.error("Room and name are required");
+      return toast.error("Disconnected! You need to join");
     }
 
     const file = fileRef.current.files[0];
-    if (file.type.split("/")[0] === "image") {
-      return toast.error("Only image can be upload");
-    }
+
     const reader = new FileReader();
 
     reader.readAsDataURL(file);
@@ -53,6 +55,7 @@ export default function Home() {
         room: roomRef.current.value,
         filename: file.name,
         data: reader.result, // Base64 or ArrayBuffer
+        time: new Date(),
       });
     };
 
@@ -62,6 +65,15 @@ export default function Home() {
   useEffect(() => {
     socket.on("chatEvent", (data) => {
       setChatInfo(data);
+    });
+  }, []);
+  useEffect(() => {
+    socket.on("status", (data) => {
+      if (data) {
+        setStatus(true);
+      } else {
+        setStatus(false);
+      }
     });
   }, []);
   useEffect(() => {
@@ -96,11 +108,23 @@ export default function Home() {
     setFileName(data.filename);
     document.getElementById("my_modal_1").showModal();
   };
+  console.log(chatInfo);
   return (
     <div className="  bg-gray-100 h-screen grid items-center">
       <div className="grid  mx-auto container grid-cols-3 gap-6  justify-center py-6">
         {/* Left Panel */}
+
         <div className="bg-white h-fit col-span-3 xl:col-span-1 lg:col-span-2 p-6 rounded-lg shadow-sm border ">
+          <p className="mb-2 text-sm">
+            Status:{" "}
+            <span className="font-bold">
+              {status ? (
+                <span className="text-green-500">Connected</span>
+              ) : (
+                <span className="text-yellow-500">Oflline</span>
+              )}
+            </span>
+          </p>
           <input
             ref={nameRef}
             placeholder="Your Name"
@@ -197,31 +221,30 @@ export default function Home() {
           </div>
           <div ref={chatContainerRef} className="h-64 overflow-y-auto mb-4">
             {chatInfo.length > 0 ? (
-              chatInfo.message ? (
-                chatInfo.map((msg, index) => (
-                  <div key={index} className="mb-3">
-                    <div className="text-sm text-gray-500 mb-1">
-                      {msg.name}{" "}
-                      {msg.name.toLowerCase() ===
-                        nameRef.current.value.toLowerCase() && "(You)"}{" "}
-                      <span className="text-xs text-gray-400">
-                        {moment(msg.time).fromNow()}
-                      </span>
+              chatInfo.map(
+                (msg, index) =>
+                  msg.message && (
+                    <div key={index} className="mb-3">
+                      <div className="text-sm text-gray-500 mb-1">
+                        {msg.name}{" "}
+                        {msg.name.toLowerCase() ===
+                          nameRef.current.value.toLowerCase() && "(You)"}{" "}
+                        <span className="text-xs text-gray-400">
+                          {moment(msg.time).fromNow()}
+                        </span>
+                      </div>
+                      <div
+                        className={`${
+                          msg.name.toLowerCase() ===
+                          nameRef.current.value.toLowerCase()
+                            ? "bg-blue-100 ml-auto"
+                            : "bg-gray-100"
+                        } p-3 rounded-lg max-w-xs`}
+                      >
+                        {msg.message}
+                      </div>
                     </div>
-                    <div
-                      className={`${
-                        msg.name.toLowerCase() ===
-                        nameRef.current.value.toLowerCase()
-                          ? "bg-blue-100 ml-auto"
-                          : "bg-gray-100"
-                      } p-3 rounded-lg max-w-xs`}
-                    >
-                      {msg.message}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p>No messages yet.</p>
+                  )
               )
             ) : (
               <p>No messages yet.</p>
