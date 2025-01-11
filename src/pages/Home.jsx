@@ -217,7 +217,7 @@ export default function Home() {
               </button>
             </form>
 
-            <div ref={mediaContainerRef} className="h-64 overflow-y-auto">
+            <div ref={mediaContainerRef} className="max-h-64 overflow-y-auto">
               {chatInfo.length > 0
                 ? chatInfo.map(
                     (file, index) =>
