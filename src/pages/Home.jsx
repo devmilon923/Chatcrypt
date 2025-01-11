@@ -1,4 +1,5 @@
 import moment from "moment";
+import momentTimezone from "moment-timezone";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import io from "socket.io-client";
@@ -42,25 +43,30 @@ export default function Home() {
     e.target.reset();
   };
   useEffect(() => {
-    const targetTime = moment().add(5, "hours"); // উদাহরণস্বরূপ, 5 ঘণ্টা পরের সময়
-    const interval = setInterval(() => {
-      const now = moment();
-      const duration = moment.duration(targetTime.diff(now));
+    const targetTime = momentTimezone()
+      .tz("Asia/Dhaka")
+      .set({ hour: 0, minute: 0, second: 0 })
+      .add(1, "days"); // Next midnight (12:00 AM Bangladesh time)
 
-      // ঘণ্টা, মিনিট, সেকেন্ড বের করা
+    const interval = setInterval(() => {
+      const now = momentTimezone().tz("Asia/Dhaka"); // Get current time in Bangladesh
+      const duration = momentTimezone.duration(targetTime.diff(now));
+
+      // Get hours, minutes, and seconds remaining
       const hours = duration.hours();
       const minutes = duration.minutes();
       const seconds = duration.seconds();
 
       setReset(
-        `${hours}h ${minutes}m ${seconds}s` // এই ফরম্যাটে সময় প্রদর্শন
+        `${hours}h ${minutes}m ${seconds}s` // Display the countdown in this format
       );
 
-      // যদি সময় শেষ হয়ে যায়, তাহলে interval বন্ধ করে দেওয়া
+      // If the countdown reaches zero, restart the target time to the next midnight
       if (duration.asSeconds() <= 0) {
-        clearInterval(interval);
+        // Reset the target time to the next midnight
+        targetTime.add(1, "days"); // Move to the next day
       }
-    }, 1000); // প্রতি সেকেন্ডে সময় আপডেট হবে
+    }, 1000); // Update every second
 
     return () => clearInterval(interval); // Clean-up interval when the component unmounts
   }, []);
