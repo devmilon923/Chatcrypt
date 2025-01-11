@@ -8,6 +8,7 @@ const socket = io("https://socket-room-backend.onrender.com");
 export default function Home() {
   const [chatInfo, setChatInfo] = useState([]);
   const [status, setStatus] = useState(false);
+  const [btnLoading, setBtnLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(false);
   const [fileLink, setFileLink] = useState(null);
   const [fileName, setFileName] = useState(null);
@@ -64,14 +65,18 @@ export default function Home() {
     return () => clearInterval(interval); // Clean-up interval when the component unmounts
   }, []);
   const handleFileUpload = (e) => {
+    setBtnLoading(true);
     e.preventDefault();
     if (!roomRef.current.value || !nameRef.current.value) {
+      setBtnLoading(false);
       return toast.error("Disconnected! You need to join");
     }
 
     const file = fileRef.current.files[0];
-    if (file.type.split("/")[0] !== "image")
+    if (file.type.split("/")[0] !== "image") {
+      setBtnLoading(false);
       return toast.error("Sorry! Support only image file");
+    }
     const reader = new FileReader();
 
     reader.readAsDataURL(file);
@@ -84,7 +89,7 @@ export default function Home() {
         time: new Date(),
       });
     };
-
+    setBtnLoading(false);
     fileRef.current.value = null;
   };
 
@@ -212,7 +217,7 @@ export default function Home() {
                 type="submit"
                 className="bg-green-500 text-white p-2 rounded w-full hover:bg-green-600 focus:outline-none"
               >
-                Send Image
+                {btnLoading ? "Sending..." : "Send Image"}
               </button>
             </form>
 
