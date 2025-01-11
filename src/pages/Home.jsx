@@ -70,7 +70,8 @@ export default function Home() {
     }
 
     const file = fileRef.current.files[0];
-
+    if (file.type.split("/")[0] !== "image")
+      return toast.error("Sorry! Support only image file");
     const reader = new FileReader();
 
     reader.readAsDataURL(file);
@@ -113,7 +114,6 @@ export default function Home() {
   }, [setServerResponse]);
   useEffect(() => {
     socket.on("connectionStatus", (data) => {
-      // console.log(first)
       setConnectionStatus(data);
     });
   }, [setConnectionStatus]);
@@ -122,7 +122,6 @@ export default function Home() {
       if (serverResponse.type) {
         toast.success(serverResponse.message);
       } else {
-        console.log(serverResponse);
         toast.error(serverResponse.message);
       }
     }
