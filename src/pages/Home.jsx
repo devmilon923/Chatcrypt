@@ -28,7 +28,9 @@ export default function Home() {
       name: nameRef.current.value,
     });
   };
-
+  useEffect(() => {
+    document.title = "Chatcrypt | Home";
+  }, []);
   const sendMessage = (e) => {
     e.preventDefault();
     if (!roomRef.current.value || !nameRef.current.value) {
