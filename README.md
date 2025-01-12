@@ -1,8 +1,9 @@
 # Chatcrypt | Secure Chat Application
 
 This project is a lightweight and secure chat application designed to provide users with anonymous communication. The application ensures user privacy by temporarily storing chat data in server memory and automatically deleting it at 12 AM (GMT+6).
-**Live Site**: [Chatcrypt Live](https://github.com/devmilon923/Chatcrypt)
-**Backend Repository**: [Chatcrypt Backend](https://github.com/devmilon923/Chatcrypt-Backend)
+
+- **Live Site**: [Chatcrypt Live](https://github.com/devmilon923/Chatcrypt)
+- **Backend Repository**: [Chatcrypt Backend](https://github.com/devmilon923/Chatcrypt-Backend)
 
 ## Features
 
